@@ -24,17 +24,14 @@ export function MarketingNav() {
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
-          <Link href="#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-white">
-            الميزات
+          <Link href="/about" className="text-sm font-medium text-muted-foreground transition-colors hover:text-white">
+            عن المنصة
           </Link>
-          <Link href="#how-it-works" className="text-sm font-medium text-muted-foreground transition-colors hover:text-white">
-            كيف يعمل
-          </Link>
-          <Link href="#pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-white">
+          <Link href="/pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-white">
             الأسعار
           </Link>
-          <Link href="#faq" className="text-sm font-medium text-muted-foreground transition-colors hover:text-white">
-            الأسئلة
+          <Link href="/help" className="text-sm font-medium text-muted-foreground transition-colors hover:text-white">
+            المساعدة
           </Link>
         </nav>
 
