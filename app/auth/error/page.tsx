@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 
 export default function AuthErrorPage() {
   return (
@@ -9,9 +8,12 @@ export default function AuthErrorPage() {
         <p className="text-muted-foreground">
           الرابط غير صالح أو انتهت صلاحيته. يمكنك طلب رابط جديد من صفحة تسجيل الدخول.
         </p>
-        <Button asChild className="w-full">
-          <Link href="/login">العودة لتسجيل الدخول</Link>
-        </Button>
+        <Link
+          href="/login"
+          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          العودة لتسجيل الدخول
+        </Link>
       </div>
     </div>
   );
