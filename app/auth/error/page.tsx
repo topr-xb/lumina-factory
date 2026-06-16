@@ -1,11 +1,59 @@
 "use client";
 
+import { useState, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Mail, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 
 export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={<AuthErrorSkeleton />}>
+      <AuthErrorContent />
+    </Suspense>
+  );
+}
+
+function AuthErrorSkeleton() {
+  return (
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="h-96 w-full max-w-md animate-pulse rounded-2xl bg-card" />
+    </div>
+  );
+}
+
+function AuthErrorContent() {
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
+
+  const handleResend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus("loading");
+    try {
+      const res = await fetch("/api/auth/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setStatus("success");
+        setMessage(json.message);
+      } else {
+        setStatus("error");
+        setMessage(json.error || "فشل إعادة الإرسال");
+      }
+    } catch {
+      setStatus("error");
+      setMessage("حدث خطأ غير متوقع");
+    }
+  };
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-12">
       <div className="absolute inset-0 -z-10">
@@ -27,10 +75,44 @@ export default function AuthErrorPage() {
             فشل تأكيد الحساب
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            الرابط غير صالح أو انتهت صلاحيته. يمكنك طلب رابط جديد من صفحة تسجيل الدخول.
+            الرابط غير صالح أو انتهت صلاحيته. أدخل بريدك لإعادة إرسال رابط التأكيد.
           </p>
+
+          <form onSubmit={handleResend} className="mt-6 space-y-4 text-right">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-white">البريد الإلكتروني</Label>
+              <div className="relative">
+                <Mail className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  className="border-white/10 bg-white/[0.03] pr-10 text-right text-white"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={status === "loading" || status === "success"}
+            >
+              {status === "loading" && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              {status === "success" && <CheckCircle2 className="ml-2 h-4 w-4" />}
+              {status === "success" ? "تم الإرسال" : "إعادة إرسال رابط التأكيد"}
+            </Button>
+            {message && (
+              <p className={`text-sm ${status === "error" ? "text-destructive" : "text-emerald-500"}`}>
+                {message}
+              </p>
+            )}
+          </form>
+
           <Link href="/login" className="mt-6 block">
-            <Button className="w-full bg-white/5 text-white hover:bg-white/10">
+            <Button variant="ghost" className="w-full text-muted-foreground hover:text-white">
+              <ArrowLeft className="ml-2 h-4 w-4" />
               العودة لتسجيل الدخول
             </Button>
           </Link>

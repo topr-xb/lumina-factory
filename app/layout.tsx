@@ -30,8 +30,25 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://lumina-factory.netlify.app"),
   title: "Lumina Factory | مصنع الضوء",
   description: "استنسخ الهوية البصرية لاستوديوك وانتج آلاف صور المنتجات بالذكاء الاصطناعي",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Lumina Factory | مصنع الضوء",
+    description: "استنسخ الهوية البصرية لاستوديوك وانتج آلاف صور المنتجات بالذكاء الاصطناعي",
+    url: "https://lumina-factory.netlify.app",
+    siteName: "Lumina Factory",
+    locale: "ar_SA",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Lumina Factory | مصنع الضوء",
+    description: "استنسخ الهوية البصرية لاستوديوك وانتج آلاف صور المنتجات بالذكاء الاصطناعي",
+  },
 };
 
 export default function RootLayout({

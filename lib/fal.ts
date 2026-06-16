@@ -51,6 +51,7 @@ export async function validateGenerationPayload(payload: GenerationPayload): Pro
 
 export async function buildGenerationPayload(params: {
   prompt: string;
+  systemPrompt?: string | null;
   decorImageUrl: string;
   productImageUrl: string;
   numImages: number;
@@ -58,6 +59,9 @@ export async function buildGenerationPayload(params: {
   aspectRatio?: AspectRatio;
   seed?: number;
   thinkingLevel?: ThinkingLevel;
+  enableWebSearch?: boolean;
+  outputFormat?: 'jpeg' | 'png' | 'webp';
+  safetyTolerance?: 1 | 2 | 3 | 4 | 5 | 6;
 }): Promise<GenerationPayload> {
   const payload: GenerationPayload = {
     prompt: params.prompt,
@@ -70,6 +74,18 @@ export async function buildGenerationPayload(params: {
   if (typeof params.seed === 'number') payload.seed = params.seed;
   if (params.thinkingLevel === 'high') {
     payload.thinking_level = 'high';
+  }
+  if (params.systemPrompt) {
+    payload.system_prompt = params.systemPrompt;
+  }
+  if (params.enableWebSearch) {
+    payload.enable_web_search = true;
+  }
+  if (params.outputFormat) {
+    payload.output_format = params.outputFormat;
+  }
+  if (params.safetyTolerance) {
+    payload.safety_tolerance = String(params.safetyTolerance) as any;
   }
 
   // Explicitly request limited generations for predictable outputs

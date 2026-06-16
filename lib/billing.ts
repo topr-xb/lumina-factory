@@ -12,28 +12,28 @@ export async function calculateCost(params: {
   aspect_ratio: AspectRatio;
   num_images: number;
   thinking_level?: ThinkingLevel;
+  enable_web_search?: boolean;
 }): Promise<CostEstimate> {
-  const { resolution, aspect_ratio, num_images, thinking_level = 'low' } = params;
+  const { resolution, aspect_ratio, num_images, thinking_level = 'low', enable_web_search = false } = params;
 
   const baseCost = await getConfigNumber('base_cost_1k', 0.08);
 
   const multiplierKey = `multiplier_${resolution.toLowerCase().replace('.', '_')}`;
   const resolutionMultiplier = await getConfigNumber(multiplierKey, 1.0);
 
-  const thinkingMultiplier =
-    thinking_level === 'high'
-      ? await getConfigNumber('multiplier_thinking_high', 1.5)
-      : 1.0;
+  const costPerImage = baseCost * resolutionMultiplier;
+  const thinkingAddOn = thinking_level === 'high' ? await getConfigNumber('addon_thinking_high', 0.002) : 0;
+  const webSearchAddOn = enable_web_search ? await getConfigNumber('addon_web_search', 0.015) : 0;
 
-  const costPerImage = baseCost * resolutionMultiplier * thinkingMultiplier;
-  const totalCost = costPerImage * Math.max(1, num_images);
+  const finalCostPerImage = costPerImage + thinkingAddOn + webSearchAddOn;
+  const totalCost = finalCostPerImage * Math.max(1, num_images);
 
   return {
     resolution,
     aspect_ratio,
     num_images: Math.max(1, num_images),
     thinking_level: thinking_level,
-    cost_per_image: Number(costPerImage.toFixed(6)),
+    cost_per_image: Number(finalCostPerImage.toFixed(6)),
     total_cost: Number(totalCost.toFixed(6)),
     currency: 'USD',
   };

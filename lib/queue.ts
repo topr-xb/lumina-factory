@@ -9,7 +9,7 @@ import {
   getJobResult,
   validateGenerationPayload,
 } from '@/lib/fal';
-import type { ProductionBatch, DNAProfile } from '@/types';
+import type { ProductionBatch, DNAProfile, ThinkingLevel } from '@/types';
 
 /**
  * BullMQ queue system for async batch processing.
@@ -153,16 +153,29 @@ async function processGenerationJob(job: Job<GenerationJobData>) {
     return;
   }
 
+  // Fetch batch generation params for accurate billing parity
+  const { data: batch } = await supabase
+    .from('production_batches')
+    .select('*')
+    .eq('id', batchId)
+    .single();
+
+  const genParams = (batch?.generation_params || {}) as Record<string, unknown>;
+
   // Build payload
   const payload = await buildGenerationPayload({
     prompt: buildPrompt(dnaProfile),
+    systemPrompt: dnaProfile.base_prompt,
     decorImageUrl: dnaProfile.decor_image_url,
     productImageUrl,
     numImages: 1,
-    resolution: dnaProfile.resolution as '0.5K' | '1K' | '2K' | '4K',
-    aspectRatio: dnaProfile.aspect_ratio as '16:9' | '4:3' | '1:1' | '4:5' | '9:16' | '4:1' | '1:4' | '8:1' | '1:8',
+    resolution: (genParams.resolution as any) || (dnaProfile.resolution as any),
+    aspectRatio: (genParams.aspect_ratio as any) || (dnaProfile.aspect_ratio as any),
     seed,
-    thinkingLevel: 'low',
+    thinkingLevel: (genParams.thinking_level as ThinkingLevel) || 'low',
+    enableWebSearch: false,
+    outputFormat: 'png',
+    safetyTolerance: (await getConfigNumber('safety_tolerance', 4)) as any,
   });
 
   const validation = await validateGenerationPayload(payload);
