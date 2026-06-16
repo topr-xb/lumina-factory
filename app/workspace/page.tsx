@@ -105,14 +105,19 @@ export default function WorkspacePage() {
 
   return (
     <div className="container mx-auto py-8 px-4" dir="rtl">
-      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">فضاء العمل</h1>
           <p className="text-muted-foreground">أنشئ دفعات التوليد وتابعها</p>
         </div>
-        <Link href="/dashboard">
-          <Button variant="outline">لوحة التحكم</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/workspace/canvas">
+            <Button variant="outline">المساحة اللانهائية</Button>
+          </Link>
+          <Link href="/dashboard">
+            <Button variant="outline">لوحة التحكم</Button>
+          </Link>
+        </div>
       </div>
 
       <Tabs defaultValue="create" className="space-y-6">
