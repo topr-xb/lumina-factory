@@ -1,0 +1,3 @@
+module.exports=[3727,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(60125);a.n(d("[project]/lumina-factory/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>"))},1366,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(60125);a.n(d("[project]/lumina-factory/node_modules/next/dist/client/components/builtin/global-error.js"))},81202,a=>{"use strict";a.i(3727);var b=a.i(1366);a.n(b)},69612,a=>{a.n(a.i(81202))}];
+
+//# sourceMappingURL=1_za_next_dist_client_components_builtin_global-error_19s7gxp.js.map

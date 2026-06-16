@@ -1,0 +1,10 @@
+var R=require("../../../../../chunks/[turbopack]_runtime.js")("server/app/api/batches/[id]/regenerate/route.js")
+R.c("server/chunks/[root-of-the-server]__12_isnv._.js")
+R.c("server/chunks/1_za_zod_v4_classic_external_167bczb.js")
+R.c("server/chunks/lumina-factory_18jolhm._.js")
+R.c("server/chunks/[root-of-the-server]__18sost9._.js")
+R.c("server/chunks/lumina-factory_lib_supabase_admin_ts_1z7zu25._.js")
+R.c("server/chunks/[root-of-the-server]__0lpwc_7._.js")
+R.c("server/chunks/01hv__next-internal_server_app_api_batches_[id]_regenerate_route_actions_07wqrpp.js")
+R.m(74639)
+module.exports=R.m(74639).exports
