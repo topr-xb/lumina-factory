@@ -3,8 +3,17 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Wallet,
+  Briefcase,
+  ImageIcon,
+  Plus,
+  ArrowLeft,
+  TrendingUp,
+  AlertCircle,
+} from "lucide-react";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -39,83 +48,177 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(5);
 
+  const totalImages = batches?.reduce((acc, b) => acc + (b.total_images || 0), 0) || 0;
+  const successfulImages = batches?.reduce((acc, b) => acc + (b.successful_images || 0), 0) || 0;
+
+  const stats = [
+    {
+      title: "الرصيد المتاح",
+      value: Number(wallet?.available_credits || 0).toFixed(2),
+      unit: "كريدت",
+      icon: Wallet,
+      trend: "متاح للاستخدام",
+      color: "text-amber-500",
+      bg: "bg-amber-500/10",
+    },
+    {
+      title: "إجمالي الدفعات",
+      value: batches?.length || 0,
+      unit: "دفعة",
+      icon: Briefcase,
+      trend: "آخر 5 دفعات",
+      color: "text-violet-500",
+      bg: "bg-violet-500/10",
+    },
+    {
+      title: "الصور المولدة",
+      value: successfulImages,
+      unit: "من " + totalImages,
+      icon: ImageIcon,
+      trend: "نجاح " + (totalImages > 0 ? Math.round((successfulImages / totalImages) * 100) : 0) + "%",
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+    },
+  ];
+
+  const quickActions = [
+    { title: "دفعة جديدة", href: "/workspace", description: "أنشئ دفعة توليد جديدة", primary: true },
+    { title: "هوية بصرية", href: "/dna-profiles/new", description: "ابنِ DNA جديد" },
+    { title: "المساحة اللانهائية", href: "/workspace/canvas", description: "تصفح الدفعات بصرياً" },
+  ];
+
   return (
-    <div className="container mx-auto py-8 px-4" dir="rtl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="space-y-8" dir="rtl">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">لوحة التحكم</h1>
-          <p className="text-muted-foreground">نظرة عامة على حسابك وإنتاجك</p>
+          <h1 className="font-heading-ar text-3xl font-bold text-white">لوحة التحكم</h1>
+          <p className="mt-1 text-muted-foreground">نظرة عامة على حسابك وإنتاجك</p>
         </div>
         <Link href="/workspace">
-          <Button>فضاء العمل</Button>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Plus className="ml-2 h-4 w-4" />
+            دفعة جديدة
+          </Button>
         </Link>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">الرصيد المتاح</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{Number(wallet?.available_credits || 0).toFixed(2)}</p>
-            <p className="text-sm text-muted-foreground">كريدت</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">إجمالي الدفعات</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{batches?.length || 0}</p>
-            <p className="text-sm text-muted-foreground">دفعة</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">حالة الحساب</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge variant="default">مفعل</Badge>
-          </CardContent>
-        </Card>
+      {/* Stats */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.title} className="border-white/[0.06] bg-card">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                    <p className="mt-2 font-heading-en text-3xl font-bold text-white">
+                      {stat.value}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">{stat.unit}</p>
+                  </div>
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${stat.bg}`}>
+                    <Icon className={`h-5 w-5 ${stat.color}`} />
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-1.5 text-xs text-emerald-500">
+                  <TrendingUp className="h-3 w-3" />
+                  {stat.trend}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>آخر الدفعات</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {batches && batches.length > 0 ? (
-            <div className="space-y-4">
-              {batches.map((batch) => (
-                <div key={batch.id} className="flex items-center justify-between border-b pb-4 last:border-0">
+      {/* Quick Actions */}
+      <div>
+        <h2 className="mb-4 font-heading-ar text-lg font-semibold text-white">إجراءات سريعة</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {quickActions.map((action) => (
+            <Link key={action.title} href={action.href}>
+              <Card
+                className={`group cursor-pointer border-white/[0.06] bg-card transition-all hover:-translate-y-1 hover:border-amber-500/30 ${
+                  action.primary ? "bg-gradient-to-br from-amber-500/10 to-transparent" : ""
+                }`}
+              >
+                <CardContent className="flex items-center justify-between p-5">
                   <div>
-                    <p className="font-medium">{batch.name}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="font-semibold text-white">{action.title}</p>
+                    <p className="text-sm text-muted-foreground">{action.description}</p>
+                  </div>
+                  <ArrowLeft className="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-x-1" />
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Batches */}
+      <div>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-heading-ar text-lg font-semibold text-white">آخر الدفعات</h2>
+          <Link href="/workspace" className="text-sm text-amber-500 hover:text-amber-400">
+            عرض الكل
+          </Link>
+        </div>
+
+        {batches && batches.length > 0 ? (
+          <div className="space-y-3">
+            {batches.map((batch) => (
+              <Card
+                key={batch.id}
+                className="border-white/[0.06] bg-card transition-colors hover:border-white/[0.12]"
+              >
+                <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-white">{batch.name}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {batch.successful_images} ناجحة / {batch.failed_images} فاشلة / {batch.total_images} إجمالي
                     </p>
                   </div>
-                  <Badge
-                    variant={
-                      batch.status === "completed"
-                        ? "default"
-                        : batch.status === "processing"
-                        ? "secondary"
-                        : "destructive"
-                    }
-                  >
-                    {batch.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground">لا توجد دفعات بعد. ابدأ من فضاء العمل.</p>
-          )}
-        </CardContent>
-      </Card>
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">
+                      ${Number(batch.total_cost || 0).toFixed(4)}
+                    </div>
+                    <Badge
+                      variant={
+                        batch.status === "completed"
+                          ? "default"
+                          : batch.status === "processing"
+                          ? "secondary"
+                          : "destructive"
+                      }
+                      className="min-w-[80px] justify-center"
+                    >
+                      {batch.status}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="border-white/[0.06] bg-card">
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-500">
+                <AlertCircle className="h-6 w-6" />
+              </div>
+              <h3 className="mt-4 font-semibold text-white">لا توجد دفعات بعد</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                ابدأ بإنشاء أول دفعة توليد من فضاء العمل.
+              </p>
+              <Link href="/workspace" className="mt-4">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  إنشاء دفعة
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
