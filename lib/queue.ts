@@ -1,63 +1,31 @@
-import { Queue, Worker, Job } from 'bullmq';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getConfigNumber } from '@/lib/config';
 import { refundCredits } from '@/lib/billing';
 import {
   buildGenerationPayload,
   submitGenerationJob,
-  getJobStatus,
-  getJobResult,
   validateGenerationPayload,
 } from '@/lib/fal';
 import type { ProductionBatch, DNAProfile, ThinkingLevel } from '@/types';
 
 /**
- * BullMQ queue system for async batch processing.
- * Throttled concurrency, Error Jail, and refund-on-failure.
+ * Async generation dispatcher.
+ * Submits jobs to fal.ai with a webhook URL so results come back asynchronously.
+ * No persistent worker is needed — ideal for serverless deployments.
  */
 
-const redisConnection = {
-  url: process.env.REDIS_URL || 'redis://localhost:6379',
-  maxRetriesPerRequest: null,
-};
-
-let generationQueueInstance: Queue<GenerationJobData> | null = null;
-
-export function getGenerationQueue(): Queue<GenerationJobData> {
-  if (!generationQueueInstance) {
-    generationQueueInstance = new Queue('lumina-generation', {
-      connection: redisConnection as any,
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: { count: 100 },
-        removeOnFail: { count: 500 },
-      },
-    });
-  }
-  return generationQueueInstance;
-}
-
-// Backward-compatible export (lazy)
-export const generationQueue = new Proxy({} as Queue<GenerationJobData>, {
-  get(_target, prop) {
-    const queue = getGenerationQueue();
-    return (queue as any)[prop];
-  },
-});
-
-export interface GenerationJobData {
+export interface GenerationContext {
   nodeId: string;
   batchId: string;
   userId: string;
   dnaProfileId?: string;
   productImageUrl: string;
   seed: number;
-  index: number;
   cost: number;
+  origin: string;
 }
 
-export async function enqueueBatch(batchId: string, userId: string): Promise<void> {
+export async function enqueueBatch(batchId: string, userId: string, origin?: string): Promise<void> {
   const supabase = createAdminClient();
 
   const { data: batch } = await supabase
@@ -74,6 +42,8 @@ export async function enqueueBatch(batchId: string, userId: string): Promise<voi
     .eq('id', batch.dna_profile_id)
     .single();
 
+  if (!dnaProfile) throw new Error('DNA profile not found');
+
   const { data: nodes } = await supabase
     .from('image_nodes')
     .select('*')
@@ -82,66 +52,37 @@ export async function enqueueBatch(batchId: string, userId: string): Promise<voi
 
   if (!nodes || nodes.length === 0) return;
 
-  const concurrency = await getConfigNumber('max_concurrent_jobs', 4);
-
-  const jobs = nodes.map((node, index) => ({
-    name: `generate-${node.id}`,
-    data: {
-      nodeId: node.id,
-      batchId: batch.id,
-      userId,
-      dnaProfileId: batch.dna_profile_id,
-      productImageUrl: node.original_image_url,
-      seed: node.seed_used ?? Math.floor(Math.random() * 1_000_000),
-      index,
-      cost: node.cost,
-    } satisfies GenerationJobData,
-  }));
-
-  await getGenerationQueue().addBulk(jobs);
-
   // Update batch status
   await supabase
     .from('production_batches')
     .update({ status: 'processing', updated_at: new Date().toISOString() })
     .eq('id', batchId);
 
-  // Spawn worker lazily if not already running (dev mode)
-  if (!workerInstance) {
-    startWorker(concurrency);
+  // Submit each node to fal.ai with webhook callback
+  const concurrency = await getConfigNumber('max_concurrent_jobs', 4);
+  for (let i = 0; i < nodes.length; i += concurrency) {
+    const chunk = nodes.slice(i, i + concurrency);
+    await Promise.all(
+      chunk.map((node) =>
+        submitGenerationNode({
+          nodeId: node.id,
+          batchId: batch.id,
+          userId,
+          dnaProfileId: batch.dna_profile_id,
+          productImageUrl: node.original_image_url,
+          seed: node.seed_used ?? Math.floor(Math.random() * 1_000_000),
+          cost: node.cost,
+          origin: origin || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://lumina-factory.netlify.app',
+        })
+      )
+    );
   }
 }
 
-let workerInstance: Worker | null = null;
-
-export function startWorker(concurrency = 4) {
-  if (workerInstance) return workerInstance;
-
-  workerInstance = new Worker<GenerationJobData>(
-    'lumina-generation',
-    async (job) => processGenerationJob(job),
-    {
-      connection: redisConnection as any,
-      concurrency,
-      limiter: {
-        max: 10,
-        duration: 60_000, // 10 jobs per minute by default
-      },
-    }
-  );
-
-  workerInstance.on('failed', (job, err) => {
-    console.error(`Job ${job?.id} failed:`, err);
-  });
-
-  return workerInstance;
-}
-
-async function processGenerationJob(job: Job<GenerationJobData>) {
-  const { nodeId, batchId, userId, dnaProfileId, productImageUrl, seed, cost } = job.data;
+export async function submitGenerationNode(ctx: GenerationContext) {
+  const { nodeId, batchId, userId, dnaProfileId, productImageUrl, seed, cost } = ctx;
   const supabase = createAdminClient();
 
-  // Fetch DNA profile
   const { data: dnaProfile } = await supabase
     .from('dna_profiles')
     .select('*')
@@ -153,7 +94,6 @@ async function processGenerationJob(job: Job<GenerationJobData>) {
     return;
   }
 
-  // Fetch batch generation params for accurate billing parity
   const { data: batch } = await supabase
     .from('production_batches')
     .select('*')
@@ -162,7 +102,6 @@ async function processGenerationJob(job: Job<GenerationJobData>) {
 
   const genParams = (batch?.generation_params || {}) as Record<string, unknown>;
 
-  // Build payload
   const payload = await buildGenerationPayload({
     prompt: buildPrompt(dnaProfile),
     systemPrompt: dnaProfile.base_prompt,
@@ -184,55 +123,34 @@ async function processGenerationJob(job: Job<GenerationJobData>) {
     return;
   }
 
-  // Mark node as processing
   await supabase
     .from('image_nodes')
     .update({ status: 'processing', updated_at: new Date().toISOString() })
     .eq('id', nodeId);
 
   try {
-    const submitResult = await submitGenerationJob(payload);
-    const requestId = submitResult.request_id;
-
-    // Poll for result with timeout
-    const result = (await pollForResult(requestId, 120_000)) as any;
-
-    if (!result || !result.images || result.images.length === 0) {
-      throw new Error('No images returned from fal.ai');
-    }
-
-    const imageUrl = result.images[0].url as string;
-
-    await supabase
-      .from('image_nodes')
-      .update({
-        generated_image_url: imageUrl,
-        status: 'success',
-        seed_used: seed,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', nodeId);
-
-    await updateBatchStats(supabase, batchId);
+    const webhookUrl = buildWebhookUrl({ nodeId, batchId, userId, cost, origin: ctx.origin });
+    await submitGenerationJob(payload, webhookUrl);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await failNode(supabase, nodeId, batchId, userId, cost, message);
   }
 }
 
-async function pollForResult(requestId: string, timeoutMs: number) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const status = (await getJobStatus(requestId)) as any;
-    if (status.status === 'COMPLETED') {
-      return getJobResult(requestId);
-    }
-    if (status.status === 'FAILED') {
-      throw new Error('fal.ai job failed');
-    }
-    await new Promise((r) => setTimeout(r, 3000));
+function buildWebhookUrl(ctx: { nodeId: string; batchId: string; userId: string; cost: number; origin: string }) {
+  const baseUrl = ctx.origin;
+  const secret = process.env.FAL_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error('FAL_WEBHOOK_SECRET is not configured');
   }
-  throw new Error('fal.ai job polling timeout');
+
+  const url = new URL('/api/webhooks/fal', baseUrl);
+  url.searchParams.set('secret', secret);
+  url.searchParams.set('node_id', ctx.nodeId);
+  url.searchParams.set('batch_id', ctx.batchId);
+  url.searchParams.set('user_id', ctx.userId);
+  url.searchParams.set('cost', String(ctx.cost));
+  return url.toString();
 }
 
 async function failNode(
@@ -252,7 +170,6 @@ async function failNode(
     })
     .eq('id', nodeId);
 
-  // Refund credits for failed generation
   if (cost > 0) {
     await refundCredits(userId, cost, { batchId, nodeId, description: `Refund for failed node: ${reason}` });
   }

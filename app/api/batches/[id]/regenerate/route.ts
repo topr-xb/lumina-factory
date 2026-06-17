@@ -90,7 +90,8 @@ export async function POST(
       .update({ status: "processing", updated_at: new Date().toISOString() })
       .eq("id", batchId);
 
-    await enqueueBatch(batchId, user.id);
+    const origin = new URL(request.url).origin;
+    await enqueueBatch(batchId, user.id, origin);
 
     return NextResponse.json({ success: true, regenerated: nodes.length });
   } catch (error) {

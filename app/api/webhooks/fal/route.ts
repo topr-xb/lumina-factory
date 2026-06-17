@@ -1,0 +1,113 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { refundCredits } from "@/lib/billing";
+
+/**
+ * fal.ai webhook endpoint.
+ * Receives generation results and updates image_nodes + batch stats.
+ */
+
+export async function POST(request: NextRequest) {
+  try {
+    // Simple secret check to prevent unauthorized calls
+    const secret = request.nextUrl.searchParams.get("secret");
+    if (secret !== process.env.FAL_WEBHOOK_SECRET) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = await request.json();
+    const requestId = payload.request_id ?? payload.requestId;
+    const nodeId = payload.node_id ?? payload.nodeId;
+    const batchId = payload.batch_id ?? payload.batchId;
+    const userId = payload.user_id ?? payload.userId;
+    const cost = payload.cost ?? 0;
+
+    if (!nodeId || !batchId || !userId) {
+      return NextResponse.json({ success: false, error: "Missing context" }, { status: 400 });
+    }
+
+    const supabase = createAdminClient();
+
+    // Handle fal.ai failure
+    if (payload.status === "FAILED" || !payload.data || !payload.data.images || payload.data.images.length === 0) {
+      await failNode(supabase, nodeId, batchId, userId, cost, payload.error || "Generation failed");
+      await updateBatchStats(supabase, batchId);
+      return NextResponse.json({ success: true, handled: "failure" });
+    }
+
+    const imageUrl = payload.data.images[0].url as string;
+
+    await supabase
+      .from("image_nodes")
+      .update({
+        generated_image_url: imageUrl,
+        status: "success",
+        metadata: {
+          ...(payload.data.description ? { description: payload.data.description } : {}),
+          request_id: requestId,
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", nodeId);
+
+    await updateBatchStats(supabase, batchId);
+
+    return NextResponse.json({ success: true, handled: "success" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("fal webhook error:", message);
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
+
+async function failNode(
+  supabase: ReturnType<typeof createAdminClient>,
+  nodeId: string,
+  batchId: string,
+  userId: string,
+  cost: number,
+  reason: string
+) {
+  await supabase
+    .from("image_nodes")
+    .update({
+      status: "failed",
+      error_reason: reason,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", nodeId);
+
+  if (cost > 0) {
+    await refundCredits(userId, cost, { batchId, nodeId, description: `Refund for failed node: ${reason}` });
+  }
+}
+
+async function updateBatchStats(supabase: ReturnType<typeof createAdminClient>, batchId: string) {
+  const { data: stats } = await supabase.from("image_nodes").select("status").eq("batch_id", batchId);
+  if (!stats) return;
+
+  const total = stats.length;
+  const success = stats.filter((s) => s.status === "success").length;
+  const failed = stats.filter((s) => s.status === "failed").length;
+  const processing = stats.filter((s) => s.status === "processing").length;
+
+  const newStatus =
+    processing > 0
+      ? "processing"
+      : failed === 0
+      ? "completed"
+      : success === 0
+      ? "partial_error"
+      : "partial_error";
+
+  await supabase
+    .from("production_batches")
+    .update({
+      total_images: total,
+      successful_images: success,
+      failed_images: failed,
+      status: newStatus,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", batchId);
+}

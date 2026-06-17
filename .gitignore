@@ -20,6 +20,9 @@
 # production
 /build
 
+# local utility scripts (may contain secrets/hardcoded URLs)
+/scripts/
+
 # misc
 .DS_Store
 *.pem

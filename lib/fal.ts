@@ -94,7 +94,7 @@ export async function buildGenerationPayload(params: {
   return payload;
 }
 
-export async function submitGenerationJob(payload: GenerationPayload) {
+export async function submitGenerationJob(payload: GenerationPayload, webhookUrl?: string) {
   initFalClient();
 
   const endpoint = await getConfigString('fal_api_endpoint', 'https://queue.fal.run/fal-ai/nano-banana-2/edit');
@@ -107,6 +107,7 @@ export async function submitGenerationJob(payload: GenerationPayload) {
 
   const result = await fal.queue.submit(targetEndpoint, {
     input: payload as Record<string, unknown>,
+    ...(webhookUrl ? { webhookUrl } : {}),
   });
 
   return result;
