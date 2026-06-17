@@ -29,8 +29,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
+    // fal.ai webhook wraps the result in `payload` (not `data`) and includes status
+    const result = payload.data ?? payload.payload;
+    const isFailed = payload.status && payload.status !== "OK" && payload.status !== "COMPLETED";
+
     // Handle fal.ai failure
-    if (payload.status === "FAILED" || !payload.data || !payload.data.images || payload.data.images.length === 0) {
+    if (isFailed || !result || !result.images || result.images.length === 0) {
       const reason = payload.error || payload.detail || payload.message || "Generation failed";
       console.error("fal webhook failure:", { nodeId, reason, payload });
       await failNode(supabase, nodeId, batchId, userId, cost, reason, { payload });
@@ -38,7 +42,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, handled: "failure" });
     }
 
-    const imageUrl = payload.data.images[0].url as string;
+    const imageUrl = result.images[0].url as string;
 
     await supabase
       .from("image_nodes")
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest) {
         generated_image_url: imageUrl,
         status: "success",
         metadata: {
-          ...(payload.data.description ? { description: payload.data.description } : {}),
+          ...(result.description ? { description: result.description } : {}),
           request_id: requestId,
         },
         updated_at: new Date().toISOString(),
