@@ -1,11 +1,14 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page/page-header";
+import { createMetadata } from "@/lib/metadata";
 import { Card, CardContent } from "@/components/ui/card";
+
 import { Sparkles, Target, Zap, Shield, Camera, Layers, Gem, Infinity } from "lucide-react";
 
-export const metadata = {
-  title: "عن Lumina Factory | مصنع الضوء",
-  description: "تعرف على مصنع الضوء، منصة استنساخ الهوية البصرية بالذكاء الاصطناعي للعلامات التجارية الطموحة.",
-};
+export const metadata: Metadata = createMetadata(
+  "عن Lumina Factory",
+  "تعرف على مصنع الضوء، منصة استنساخ الهوية البصرية بالذكاء الاصطناعي للعلامات التجارية الطموحة."
+);
 
 const values = [
   {

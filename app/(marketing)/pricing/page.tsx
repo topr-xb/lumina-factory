@@ -1,14 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page/page-header";
+import { createMetadata } from "@/lib/metadata";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
-export const metadata = {
-  title: "الأسعار | Lumina Factory",
-  description: "خطط أسعار Lumina Factory المرنة. ابدأ مجاناً ووسّع إنتاجك البصري حسب احتياجك.",
-};
+export const metadata: Metadata = createMetadata(
+  "الأسعار",
+  "خطط أسعار Lumina Factory المرنة. ابدأ مجاناً ووسّع إنتاجك البصري حسب احتياجك."
+);
 
 const freeFeatures = [
   "١ هوية بصرية",

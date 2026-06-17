@@ -1,11 +1,15 @@
+import type { Metadata } from "next";
 import { requireApprovedUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getConfigNumber } from "@/lib/config";
+import { createMetadata } from "@/lib/metadata";
 import { PageHeader } from "@/components/page/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Wallet, CreditCard, ArrowDownLeft, ArrowUpRight, RotateCcw } from "lucide-react";
+
+export const metadata: Metadata = createMetadata("المحفظة", "رصيدك الحالي وسجل عملياتك");
 
 export default async function WalletPage() {
   const user = await requireApprovedUser();

@@ -12,12 +12,16 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   BackgroundVariant,
+  ReactFlowProvider,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { LoadingState } from "@/components/ui/loading-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { toast } from "@/lib/toast";
 import type { ProductionBatch, ImageNode } from "@/types";
 import {
   Layers,
@@ -31,16 +35,28 @@ import {
 } from "lucide-react";
 
 export default function CanvasPage() {
+  return (
+    <ReactFlowProvider>
+      <Canvas />
+    </ReactFlowProvider>
+  );
+}
+
+function Canvas() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<(ProductionBatch & { nodes?: ImageNode[] }) | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchBatches = useCallback(async () => {
     const res = await fetch("/api/batches");
     const json = await res.json();
-    if (!json.success) return;
+    if (!json.success) {
+      setIsLoading(false);
+      return;
+    }
 
     const batches: ProductionBatch[] = json.data;
 
@@ -61,6 +77,7 @@ export default function CanvasPage() {
 
     setNodes(newNodes);
     setEdges(newEdges);
+    setIsLoading(false);
 
     const batchId = searchParams.get("batch");
     if (batchId) {
@@ -85,9 +102,16 @@ export default function CanvasPage() {
       ? Math.round((batch.successful_images / batch.total_images) * 100)
       : 0;
 
+    const statusBorder =
+      batch.status === "completed"
+        ? "border-emerald-500/30"
+        : batch.status === "processing"
+        ? "border-amber-500/50"
+        : "border-destructive/30";
+
     return (
       <div
-        className="min-w-[200px] cursor-pointer rounded-xl border border-white/[0.08] bg-[#141416] p-4 shadow-lg transition-all hover:border-amber-500/30 hover:shadow-amber-500/5"
+        className={`min-w-[200px] cursor-pointer rounded-xl border ${statusBorder} bg-[#141416] p-4 shadow-lg transition-all hover:border-amber-500/50 hover:shadow-amber-500/5 ${batch.status === "processing" ? "animate-pulse" : ""}`}
         onClick={async () => {
           const res = await fetch(`/api/batches/${batch.id}`);
           const json = await res.json();
@@ -135,10 +159,52 @@ export default function CanvasPage() {
       body: JSON.stringify({ node_ids: failedIds }),
     });
 
+    toast.success("تمت إعادة التوليد", "جاري معالجة الصور الفاشلة");
+
     const res = await fetch(`/api/batches/${selectedNode.id}`);
     const json = await res.json();
     if (json.success) setSelectedNode(json.data);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] flex-col" dir="rtl">
+        <div className="mb-6">
+          <h1 className="font-heading-ar text-2xl font-bold text-white">المساحة اللانهائية</h1>
+          <p className="text-sm text-muted-foreground">تصفح الدفعات بصرياً وتابع تقدمها</p>
+        </div>
+        <LoadingState text="جاري تحميل الدفعات..." />
+      </div>
+    );
+  }
+
+  if (!isLoading && nodes.length === 0) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] flex-col" dir="rtl">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="font-heading-ar text-2xl font-bold text-white">المساحة اللانهائية</h1>
+            <p className="text-sm text-muted-foreground">تصفح الدفعات بصرياً وتابع تقدمها</p>
+          </div>
+          <Link href="/workspace">
+            <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10">
+              <Layers className="ml-2 h-4 w-4" />
+              وضع القائمة
+            </Button>
+          </Link>
+        </div>
+        <EmptyState
+          icon={Layers}
+          title="لا توجد دفعات لعرضها"
+          description="أنشئ دفعة جديدة لتظهر هنا على اللوحة."
+          action={{
+            label: "دفعة جديدة",
+            onClick: () => router.push("/workspace"),
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col" dir="rtl">

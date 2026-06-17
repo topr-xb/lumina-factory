@@ -11,7 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageTransition } from "@/components/motion/page-transition";
+import { LoadingState } from "@/components/ui/loading-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
 import type { DNAProfile, ProductionBatch } from "@/types";
 import {
   Plus,
@@ -39,6 +43,7 @@ export default function WorkspacePage() {
   const [thinkingLevel, setThinkingLevel] = useState("low");
   const [estimate, setEstimate] = useState<{ total_cost: number; cost_per_image: number } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("create");
 
@@ -55,8 +60,7 @@ export default function WorkspacePage() {
   }, []);
 
   useEffect(() => {
-    fetchProfiles();
-    fetchBatches();
+    Promise.all([fetchProfiles(), fetchBatches()]).finally(() => setIsFetching(false));
   }, [fetchProfiles, fetchBatches]);
 
   useEffect(() => {
@@ -106,7 +110,9 @@ export default function WorkspacePage() {
 
     const json = await res.json();
     if (!json.success) {
-      setError(json.error || "فشل إنشاء الدفعة");
+      const msg = json.error || "فشل إنشاء الدفعة";
+      setError(msg);
+      toast.error("فشل إنشاء الدفعة", msg);
       setLoading(false);
       return;
     }
@@ -115,9 +121,10 @@ export default function WorkspacePage() {
     setBatchName("");
     setEstimate(null);
     setSelectedProfile("");
-    fetchBatches();
+    await fetchBatches();
     setActiveTab("batches");
     setLoading(false);
+    toast.success("تم إنشاء الدفعة", "جاري توليد الصور في الخلفية");
   };
 
   const getStatusIcon = (status: string) => {
@@ -131,8 +138,22 @@ export default function WorkspacePage() {
     }
   };
 
+  if (isFetching) {
+    return (
+      <PageTransition className="space-y-8" dir="rtl">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="font-heading-ar text-3xl font-bold text-white">فضاء العمل</h1>
+            <p className="mt-1 text-muted-foreground">أنشئ دفعات التوليد وتابع تقدمها</p>
+          </div>
+        </div>
+        <LoadingState text="جاري تحميل البيانات..." />
+      </PageTransition>
+    );
+  }
+
   return (
-    <div className="space-y-8" dir="rtl">
+    <PageTransition className="space-y-8" dir="rtl">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -200,14 +221,15 @@ export default function WorkspacePage() {
                   )}
 
                   {profiles.length === 0 && (
-                    <div className="rounded-lg bg-white/[0.03] p-4 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        لا توجد هويات بصرية.{" "}
-                        <Link href="/dna-profiles/new" className="text-amber-500 hover:text-amber-400">
-                          أنشئ واحدة الآن
-                        </Link>
-                      </p>
-                    </div>
+                    <EmptyState
+                      icon={ImageIcon}
+                      title="لا توجد هويات بصرية"
+                      description="أنشئ هوية بصرية أولاً لتستخدمها في الدفعات."
+                      action={{
+                        label: "إنشاء هوية بصرية",
+                        onClick: () => router.push("/dna-profiles/new"),
+                      }}
+                    />
                   )}
                 </CardContent>
               </Card>
@@ -423,27 +445,18 @@ export default function WorkspacePage() {
               </Card>
             ))
           ) : (
-            <Card className="border-white/[0.06] bg-card">
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-500">
-                  <Layers className="h-6 w-6" />
-                </div>
-                <h3 className="mt-4 font-semibold text-white">لا توجد دفعات بعد</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  أنشئ أول دفعة توليد الآن.
-                </p>
-                <Button
-                  className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => setActiveTab("create")}
-                >
-                  <Plus className="ml-2 h-4 w-4" />
-                  دفعة جديدة
-                </Button>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={Layers}
+              title="لا توجد دفعات بعد"
+              description="أنشئ أول دفعة توليد الآن."
+              action={{
+                label: "دفعة جديدة",
+                onClick: () => setActiveTab("create"),
+              }}
+            />
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </PageTransition>
   );
 }
