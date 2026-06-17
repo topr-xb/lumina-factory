@@ -38,6 +38,19 @@ jobs:
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           FAL_WEBHOOK_SECRET: ${{ secrets.FAL_WEBHOOK_SECRET }}
 
+      - name: Sync environment variables to Netlify
+        run: |
+          npx netlify-cli env:set NEXT_PUBLIC_SUPABASE_URL '${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}' --site=${{ secrets.NETLIFY_SITE_ID }}
+          npx netlify-cli env:set NEXT_PUBLIC_SUPABASE_ANON_KEY '${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}' --site=${{ secrets.NETLIFY_SITE_ID }}
+          npx netlify-cli env:set SUPABASE_SERVICE_ROLE_KEY '${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' --site=${{ secrets.NETLIFY_SITE_ID }}
+          npx netlify-cli env:set FAL_KEY '${{ secrets.FAL_KEY }}' --site=${{ secrets.NETLIFY_SITE_ID }}
+          npx netlify-cli env:set REDIS_URL '${{ secrets.REDIS_URL }}' --site=${{ secrets.NETLIFY_SITE_ID }}
+          npx netlify-cli env:set NEXT_PUBLIC_SITE_URL '${{ secrets.NEXT_PUBLIC_SITE_URL }}' --site=${{ secrets.NETLIFY_SITE_ID }}
+          npx netlify-cli env:set NEXT_PUBLIC_APP_URL '${{ secrets.NEXT_PUBLIC_APP_URL }}' --site=${{ secrets.NETLIFY_SITE_ID }}
+          npx netlify-cli env:set FAL_WEBHOOK_SECRET '${{ secrets.FAL_WEBHOOK_SECRET }}' --site=${{ secrets.NETLIFY_SITE_ID }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+
       - name: Deploy to Netlify (Production)
         if: github.ref == 'refs/heads/main'
         run: npx netlify-cli deploy --prod --dir=.next --site=${{ secrets.NETLIFY_SITE_ID }}
