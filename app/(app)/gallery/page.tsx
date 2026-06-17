@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/page/page-header";
+import { PageTransition } from "@/components/motion/page-transition";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { LoadingState } from "@/components/ui/loading-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { ImageNode } from "@/types";
 import { Search, ImageIcon, ZoomIn } from "lucide-react";
 
@@ -34,21 +37,8 @@ export default function GalleryPage() {
     );
   });
 
-  if (loading) {
-    return (
-      <div className="space-y-6" dir="rtl">
-        <PageHeader title="معرض الصور" subtitle="جميع الصور الناجحة في مكان واحد" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="aspect-square animate-pulse rounded-xl bg-white/[0.03]" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6" dir="rtl">
+    <PageTransition className="space-y-6" dir="rtl">
       <PageHeader title="معرض الصور" subtitle="جميع الصور الناجحة في مكان واحد">
         <div className="relative mt-4 max-w-md">
           <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -61,7 +51,9 @@ export default function GalleryPage() {
         </div>
       </PageHeader>
 
-      {filtered.length > 0 ? (
+      {loading ? (
+        <LoadingState text="جاري تحميل الصور..." />
+      ) : filtered.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((node) => {
             const prompt = node.prompt || (node.metadata?.prompt as string) || "بدون وصف";
@@ -105,17 +97,11 @@ export default function GalleryPage() {
           })}
         </div>
       ) : (
-        <Card className="border-white/[0.06] bg-card">
-          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.03]">
-              <ImageIcon className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="mt-4 text-lg font-bold text-white">لا توجد صور بعد</h3>
-            <p className="mt-2 max-w-sm text-muted-foreground">
-              قم بإنشاء دفعة جديدة من مساحة العمل لتبدأ بملء معرضك.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={ImageIcon}
+          title="لا توجد صور بعد"
+          description="قم بإنشاء دفعة جديدة من مساحة العمل لتبدأ بملء معرضك."
+        />
       )}
 
       {selected && (
@@ -143,6 +129,6 @@ export default function GalleryPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageTransition>
   );
 }

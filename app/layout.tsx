@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Arabic, Tajawal, Inter, Space_Grotesk } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
@@ -62,7 +63,10 @@ export default function RootLayout({
       dir="rtl"
       className={`${ibmPlexSansArabic.variable} ${tajawal.variable} ${inter.variable} ${spaceGrotesk.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground font-arabic">{children}</body>
+      <body className="min-h-full flex flex-col bg-background text-foreground font-arabic">
+        {children}
+        <Toaster position="top-center" richColors closeButton dir="rtl" />
+      </body>
     </html>
   );
 }

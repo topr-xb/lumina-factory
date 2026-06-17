@@ -1,10 +1,15 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createMetadata } from "@/lib/metadata";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageTransition } from "@/components/motion/page-transition";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Wallet,
   Briefcase,
@@ -14,6 +19,8 @@ import {
   TrendingUp,
   AlertCircle,
 } from "lucide-react";
+
+export const metadata: Metadata = createMetadata("لوحة التحكم", "نظرة عامة على رصيدك، دفعاتك، وصورك المنشأة");
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -54,7 +61,8 @@ export default async function DashboardPage() {
   const stats = [
     {
       title: "الرصيد المتاح",
-      value: Number(wallet?.available_credits || 0).toFixed(2),
+      value: Number(wallet?.available_credits || 0),
+      format: { minimumFractionDigits: 2, maximumFractionDigits: 2 },
       unit: "كريدت",
       icon: Wallet,
       trend: "متاح للاستخدام",
@@ -88,7 +96,7 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-8" dir="rtl">
+    <PageTransition className="space-y-8" dir="rtl">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -114,7 +122,7 @@ export default async function DashboardPage() {
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
                     <p className="mt-2 font-heading-en text-3xl font-bold text-white">
-                      {stat.value}
+                      <AnimatedNumber value={stat.value} format={stat.format} />
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">{stat.unit}</p>
                   </div>
@@ -201,24 +209,17 @@ export default async function DashboardPage() {
             ))}
           </div>
         ) : (
-          <Card className="border-white/[0.06] bg-card">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-500">
-                <AlertCircle className="h-6 w-6" />
-              </div>
-              <h3 className="mt-4 font-semibold text-white">لا توجد دفعات بعد</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                ابدأ بإنشاء أول دفعة توليد من فضاء العمل.
-              </p>
-              <Link href="/workspace" className="mt-4">
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  إنشاء دفعة
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={AlertCircle}
+            title="لا توجد دفعات بعد"
+            description="ابدأ بإنشاء أول دفعة توليد من فضاء العمل."
+            action={{
+              label: "إنشاء دفعة",
+              onClick: () => (typeof window !== "undefined" ? (window.location.href = "/workspace") : undefined),
+            }}
+          />
         )}
       </div>
-    </div>
+    </PageTransition>
   );
 }
