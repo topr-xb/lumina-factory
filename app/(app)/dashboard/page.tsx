@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -29,6 +29,7 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+  try {
 
   const admin = createAdminClient();
 
@@ -222,4 +223,5 @@ export default async function DashboardPage() {
       </div>
     </PageTransition>
   );
+  } catch (err: any) { return (<div dir="rtl" className="p-10 text-white"><h1 className="text-xl">Dashboard Server Error</h1><pre className="mt-4 whitespace-pre-wrap">{err?.message || String(err)}</pre></div>); }
 }

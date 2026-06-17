@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server';
+﻿import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
@@ -23,12 +23,22 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
+  let {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Fallback to Bearer token for programmatic/API access
+  if (!user) {
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (token) {
+      const tokenUser = await supabase.auth.getUser(token);
+      user = tokenUser.data.user;
+    }
+  }
+
   const pathname = request.nextUrl.pathname;
-  const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/workspace');
+  const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/workspace') || pathname.startsWith('/admin') || pathname.startsWith('/wallet') || pathname.startsWith('/gallery') || pathname.startsWith('/dna-profiles') || pathname.startsWith('/settings');
   const isAuthPage = pathname === '/login' || pathname === '/signup';
 
   if (isProtected && !user) {
