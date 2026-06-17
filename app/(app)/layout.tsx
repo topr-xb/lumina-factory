@@ -12,36 +12,24 @@ export default async function AppLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  try {
-    const supabase = await createClient();
-    let {
-      data: { user },
-    } = await supabase.auth.getUser();
+  const supabase = await createClient();
+  let {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    // Bearer token fallback for programmatic/API access
-    if (!user) {
-      const authHeader = (await headers()).get("authorization");
-      const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-      if (token) {
-        const tokenUser = await supabase.auth.getUser(token);
-        user = tokenUser.data.user;
-      }
+  // Bearer token fallback for programmatic/API access
+  if (!user) {
+    const authHeader = (await headers()).get("authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (token) {
+      const tokenUser = await supabase.auth.getUser(token);
+      user = tokenUser.data.user;
     }
-
-    if (!user) {
-      redirect("/login");
-    }
-
-    return <AppShell user={user}>{children}</AppShell>;
-  } catch (err: any) {
-    const message = err?.message || String(err);
-    return (
-      <html lang="ar" dir="rtl">
-        <body className="bg-black p-10 text-white">
-          <h1 className="text-xl text-red-500">App Layout Server Error</h1>
-          <pre className="mt-4 whitespace-pre-wrap">{message}</pre>
-        </body>
-      </html>
-    );
   }
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  return <AppShell user={user}>{children}</AppShell>;
 }
