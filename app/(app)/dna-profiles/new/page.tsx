@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { PageTransition } from "@/components/motion/page-transition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
+import { ErrorState } from "@/components/ui/error-state";
+import { toast } from "@/lib/toast";
 import {
   Camera,
   ImageIcon,
@@ -52,11 +55,14 @@ export default function NewDNAProfilePage() {
 
     const json = await res.json();
     if (!json.success) {
-      setError(json.error || "فشل إنشاء الهوية البصرية");
+      const msg = json.error || "فشل إنشاء الهوية البصرية";
+      setError(msg);
+      toast.error("فشل الحفظ", msg);
       setLoading(false);
       return;
     }
 
+    toast.success("تم حفظ الهوية البصرية", "يمكنك الآن استخدامها في الدفعات");
     router.push("/workspace");
   };
 
@@ -67,7 +73,7 @@ export default function NewDNAProfilePage() {
   ];
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6" dir="rtl">
+    <PageTransition className="mx-auto max-w-4xl space-y-6" dir="rtl">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -117,11 +123,7 @@ export default function NewDNAProfilePage() {
         })}
       </div>
 
-      {error && (
-        <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      {error && <ErrorState title="خطأ" description={error} onRetry={() => setError("")} />}
 
       {/* Step 1: Basics */}
       {step === 1 && (
@@ -356,6 +358,6 @@ export default function NewDNAProfilePage() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageTransition>
   );
 }

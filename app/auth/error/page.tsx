@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingState } from "@/components/ui/loading-state";
+import { toast } from "@/lib/toast";
 import { motion } from "framer-motion";
 import { AlertCircle, Mail, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 
@@ -20,7 +22,7 @@ export default function AuthErrorPage() {
 function AuthErrorSkeleton() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="h-96 w-full max-w-md animate-pulse rounded-2xl bg-card" />
+      <LoadingState text="جاري التحميل..." />
     </div>
   );
 }
@@ -44,13 +46,16 @@ function AuthErrorContent() {
       if (json.success) {
         setStatus("success");
         setMessage(json.message);
+        toast.success("تم إرسال الرابط", json.message);
       } else {
         setStatus("error");
         setMessage(json.error || "فشل إعادة الإرسال");
+        toast.error("فشل الإرسال", json.error || "فشل إعادة الإرسال");
       }
     } catch {
       setStatus("error");
       setMessage("حدث خطأ غير متوقع");
+      toast.error("خطأ", "حدث خطأ غير متوقع");
     }
   };
 

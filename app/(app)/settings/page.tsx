@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { PageHeader } from "@/components/page/page-header";
+import { PageTransition } from "@/components/motion/page-transition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/lib/toast";
 import { User, Mail, Key, Bell, Shield, Trash2 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -15,11 +17,14 @@ export default function SettingsPage() {
 
   const handleSave = () => {
     setSaving(true);
-    setTimeout(() => setSaving(false), 1000);
+    setTimeout(() => {
+      setSaving(false);
+      toast.success("تم الحفظ", "تم حفظ الإعدادات بنجاح");
+    }, 1000);
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <PageTransition className="space-y-6" dir="rtl">
       <PageHeader
         title="الإعدادات"
         subtitle="إدارة حسابك، أمانك، وتفضيلاتك ضمن منصة Lumina Factory."
@@ -161,6 +166,6 @@ export default function SettingsPage() {
       >
         {saving ? "جاري الحفظ..." : "حفظ التغييرات"}
       </Button>
-    </div>
+    </PageTransition>
   );
 }

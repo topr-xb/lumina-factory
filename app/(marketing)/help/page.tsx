@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { PageHeader } from "@/components/page/page-header";
+import { PageTransition } from "@/components/motion/page-transition";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { Search, ChevronDown, Mail, MessageCircle } from "lucide-react";
 
@@ -67,7 +69,7 @@ export default function HelpPage() {
   });
 
   return (
-    <div className="container mx-auto px-4 py-12 lg:px-8" dir="rtl">
+    <PageTransition className="container mx-auto px-4 py-12 lg:px-8" dir="rtl">
       <PageHeader
         title="مركز المساعدة"
         subtitle="إجابات مفصلة لأهم الأسئلة حول استخدام Lumina Factory. إذا لم تجد إجابتك، فريق الدعم جاهز.">
@@ -143,11 +145,7 @@ export default function HelpPage() {
               );
             })
           ) : (
-            <Card className="border-white/[0.06] bg-card">
-              <CardContent className="py-12 text-center text-muted-foreground">
-                لا توجد نتائج مطابقة. جرّب كلمات مختلفة.
-              </CardContent>
-            </Card>
+            <EmptyState icon={Search} title="لا توجد نتائج" description="جرّب كلمات مختلفة للبحث." />
           )}
         </div>
 
@@ -186,6 +184,6 @@ export default function HelpPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }

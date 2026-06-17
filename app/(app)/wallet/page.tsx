@@ -7,7 +7,8 @@ import { PageHeader } from "@/components/page/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, CreditCard, ArrowDownLeft, ArrowUpRight, RotateCcw } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Wallet, CreditCard, ArrowDownLeft, ArrowUpRight, RotateCcw, Receipt } from "lucide-react";
 
 export const metadata: Metadata = createMetadata("المحفظة", "رصيدك الحالي وسجل عملياتك");
 
@@ -83,7 +84,7 @@ export default async function WalletPage() {
         </CardHeader>
         <CardContent>
           {(!transactions || transactions.length === 0) ? (
-            <p className="text-muted-foreground">لا توجد عمليات مسجلة بعد.</p>
+            <EmptyState icon={Receipt} title="لا توجد عمليات بعد" description="ستظهر هنا عمليات الشحن والخصم والاسترداد." />
           ) : (
             <Table>
               <TableHeader>

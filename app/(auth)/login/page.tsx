@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 
@@ -27,6 +28,7 @@ export default function LoginPage() {
 
     if (error) {
       setError(error.message);
+      toast.error("فشل تسجيل الدخول", error.message);
       setLoading(false);
       return;
     }
