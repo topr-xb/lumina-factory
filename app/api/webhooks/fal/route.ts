@@ -31,7 +31,9 @@ export async function POST(request: NextRequest) {
 
     // Handle fal.ai failure
     if (payload.status === "FAILED" || !payload.data || !payload.data.images || payload.data.images.length === 0) {
-      await failNode(supabase, nodeId, batchId, userId, cost, payload.error || "Generation failed");
+      const reason = payload.error || payload.detail || payload.message || "Generation failed";
+      console.error("fal webhook failure:", { nodeId, reason, payload });
+      await failNode(supabase, nodeId, batchId, userId, cost, reason, { payload });
       await updateBatchStats(supabase, batchId);
       return NextResponse.json({ success: true, handled: "failure" });
     }
@@ -67,13 +69,15 @@ async function failNode(
   batchId: string,
   userId: string,
   cost: number,
-  reason: string
+  reason: string,
+  extra?: { payload?: unknown }
 ) {
   await supabase
     .from("image_nodes")
     .update({
       status: "failed",
       error_reason: reason,
+      metadata: extra?.payload ? { fal_payload: extra.payload } : undefined,
       updated_at: new Date().toISOString(),
     })
     .eq("id", nodeId);
