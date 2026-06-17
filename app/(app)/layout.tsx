@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createMetadata } from "@/lib/metadata";
 import { AppShell } from "@/components/layout/app-shell";
@@ -12,9 +13,19 @@ export default async function AppLayout({
   children: React.ReactNode;
 }>) {
   const supabase = await createClient();
-  const {
+  let {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Bearer token fallback for programmatic/API access
+  if (!user) {
+    const authHeader = (await headers()).get('authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (token) {
+      const tokenUser = await supabase.auth.getUser(token);
+      user = tokenUser.data.user;
+    }
+  }
 
   if (!user) {
     redirect("/login");
