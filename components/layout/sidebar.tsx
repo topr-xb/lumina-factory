@@ -30,7 +30,7 @@ const navItems = [
   { href: "/workspace", label: "فضاء العمل", icon: Briefcase },
   { href: "/dna-profiles/new", label: "هوية بصرية", icon: Dna },
   { href: "/gallery", label: "معرض الصور", icon: ImageIcon },
-  { href: "#", label: "المحفظة", icon: Wallet, disabled: true },
+  { href: "/wallet", label: "المحفظة", icon: Wallet },
 ];
 
 const adminItem = { href: "/admin", label: "الإدارة", icon: ShieldCheck };
@@ -93,12 +93,10 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
               return (
                 <Link
                   key={item.label}
-                  href={item.disabled ? "#" : item.href}
+                  href={item.href}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    item.disabled
-                      ? "pointer-events-none opacity-40"
-                      : active
+                    active
                       ? "bg-amber-500/10 text-amber-500"
                       : "text-muted-foreground hover:bg-white/[0.04] hover:text-white"
                   )}
