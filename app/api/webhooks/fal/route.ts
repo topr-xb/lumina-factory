@@ -15,12 +15,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    const searchParams = request.nextUrl.searchParams;
     const payload = await request.json();
     const requestId = payload.request_id ?? payload.requestId;
-    const nodeId = payload.node_id ?? payload.nodeId;
-    const batchId = payload.batch_id ?? payload.batchId;
-    const userId = payload.user_id ?? payload.userId;
-    const cost = payload.cost ?? 0;
+    const nodeId = searchParams.get('node_id') ?? payload.node_id ?? payload.nodeId;
+    const batchId = searchParams.get('batch_id') ?? payload.batch_id ?? payload.batchId;
+    const userId = searchParams.get('user_id') ?? payload.user_id ?? payload.userId;
+    const cost = Number(searchParams.get('cost') ?? payload.cost ?? 0);
 
     if (!nodeId || !batchId || !userId) {
       return NextResponse.json({ success: false, error: "Missing context" }, { status: 400 });
