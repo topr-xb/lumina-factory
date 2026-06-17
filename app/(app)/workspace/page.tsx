@@ -46,6 +46,13 @@ export default function WorkspacePage() {
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("create");
+  const [config, setConfig] = useState<{
+    supportedResolutions: string[];
+    supportedAspectRatios: string[];
+    defaultResolution: string;
+    defaultAspectRatio: string;
+    maxBatchSize: number;
+  } | null>(null);
 
   const fetchProfiles = useCallback(async () => {
     const res = await fetch("/api/dna-profiles");
@@ -60,7 +67,20 @@ export default function WorkspacePage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([fetchProfiles(), fetchBatches()]).finally(() => setIsFetching(false));
+    Promise.all([
+      fetchProfiles(),
+      fetchBatches(),
+      fetch("/api/config/public")
+        .then((r) => r.json())
+        .then((json) => {
+          if (json.success) {
+            const data = json.data;
+            setConfig(data);
+            setResolution(data.defaultResolution);
+            setAspectRatio(data.defaultAspectRatio);
+          }
+        }),
+    ]).finally(() => setIsFetching(false));
   }, [fetchProfiles, fetchBatches]);
 
   useEffect(() => {
@@ -277,7 +297,7 @@ export default function WorkspacePage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {["0.5K", "1K", "2K", "4K"].map((r) => (
+                          {(config?.supportedResolutions || ["0.5K", "1K", "2K", "4K"]).map((r) => (
                             <SelectItem key={r} value={r}>{r}</SelectItem>
                           ))}
                         </SelectContent>
@@ -291,7 +311,7 @@ export default function WorkspacePage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {["1:1", "4:3", "16:9", "4:5", "9:16"].map((r) => (
+                          {(config?.supportedAspectRatios || ["1:1", "4:3", "16:9", "4:5", "9:16"]).map((r) => (
                             <SelectItem key={r} value={r}>{r}</SelectItem>
                           ))}
                         </SelectContent>
@@ -306,7 +326,7 @@ export default function WorkspacePage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="low">عادي</SelectItem>
-                          <SelectItem value="high">عميق (+50%)</SelectItem>
+                          <SelectItem value="high">عميق (تكلفة إضافية)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

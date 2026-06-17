@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { refundCredits } from "@/lib/billing";
+import { submitNextPendingNodes } from "@/lib/queue";
 
 /**
  * fal.ai webhook endpoint.
@@ -38,6 +39,14 @@ export async function POST(request: NextRequest) {
       const reason = payload.error || payload.detail || payload.message || "Generation failed";
       console.error("fal webhook failure:", { nodeId, reason, payload });
       await failNode(supabase, nodeId, batchId, userId, cost, reason, { payload });
+
+      // A slot just freed up; try to submit the next pending node.
+      await submitNextPendingNodes({
+        batchId,
+        userId,
+        origin: request.nextUrl.origin,
+      });
+
       await updateBatchStats(supabase, batchId);
       return NextResponse.json({ success: true, handled: "failure" });
     }
@@ -56,6 +65,13 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", nodeId);
+
+    // Keep the queue pipeline full by submitting the next pending node(s).
+    await submitNextPendingNodes({
+      batchId,
+      userId,
+      origin: request.nextUrl.origin,
+    });
 
     await updateBatchStats(supabase, batchId);
 

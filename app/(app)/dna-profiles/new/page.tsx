@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PageTransition } from "@/components/motion/page-transition";
 import { Button } from "@/components/ui/button";
@@ -36,8 +36,30 @@ export default function NewDNAProfilePage() {
     aspect_ratio: "1:1",
     resolution: "1K",
   });
+  const [config, setConfig] = useState<{
+    supportedResolutions: string[];
+    supportedAspectRatios: string[];
+    defaultResolution: string;
+    defaultAspectRatio: string;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/config/public")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success) {
+          const data = json.data;
+          setConfig(data);
+          setForm((prev) => ({
+            ...prev,
+            resolution: data.defaultResolution,
+            aspect_ratio: data.defaultAspectRatio,
+          }));
+        }
+      });
+  }, []);
 
   const updateField = (field: string, value: string | number) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -289,9 +311,9 @@ export default function NewDNAProfilePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {["0.5K", "1K", "2K", "4K"].map((r) => (
-                      <SelectItem key={r} value={r}>{r}</SelectItem>
-                    ))}
+                  {(config?.supportedResolutions || ["0.5K", "1K", "2K", "4K"]).map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -304,9 +326,9 @@ export default function NewDNAProfilePage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {["1:1", "4:3", "16:9", "4:5", "9:16"].map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
-                  ))}
+                {(config?.supportedAspectRatios || ["1:1", "4:3", "16:9", "4:5", "9:16"]).map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
                 </SelectContent>
               </Select>
             </div>

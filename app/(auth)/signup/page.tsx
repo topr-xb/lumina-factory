@@ -62,7 +62,7 @@ export default function SignupPage() {
             تم إنشاء الحساب
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            راجع بريدك الإلكتروني لتفعيل الحساب، ثم انتظر موافقة المسؤول.
+            راجع بريدك الإلكتروني لتفعيل الحساب. بمجرد التفعيل، يمكنك البدء مباشرة — الحسابات تُفعّل تلقائياً مع رصيد تجريبي.
           </p>
           <Button
             className="mt-6 w-full bg-white/5 text-white hover:bg-white/10"

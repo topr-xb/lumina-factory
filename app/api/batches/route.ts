@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireApprovedUser } from "@/lib/auth";
 import { calculateCost, hasEnoughCredits, spendCredits, refundCredits } from "@/lib/billing";
-import { getConfigNumber } from "@/lib/config";
+import { getConfigArray, getConfigNumber } from "@/lib/config";
 import { enqueueBatch } from "@/lib/queue";
 import type { Resolution, AspectRatio, ThinkingLevel } from "@/types";
 
@@ -11,8 +11,8 @@ const createBatchSchema = z.object({
   name: z.string().min(1).max(200),
   dna_profile_id: z.string().uuid(),
   product_image_urls: z.array(z.string().url()).min(1),
-  resolution: z.enum(["0.5K", "1K", "2K", "4K"]).default("1K"),
-  aspect_ratio: z.enum(["16:9", "4:3", "1:1", "4:5", "9:16", "4:1", "1:4", "8:1", "1:8"]).default("1:1"),
+  resolution: z.string().default("1K"),
+  aspect_ratio: z.string().default("1:1"),
   thinking_level: z.enum(["low", "high"]).default("low"),
   auto_start: z.boolean().default(true),
 });
@@ -44,6 +44,35 @@ export async function POST(request: Request) {
     const parsed = createBatchSchema.parse(body);
 
     const supabase = createAdminClient();
+
+    // Validate resolution/aspect ratio against live system_configs
+    const [supportedResolutions, supportedAspectRatios] = await Promise.all([
+      getConfigArray<string>("supported_resolutions", ["0.5K", "1K", "2K", "4K"]),
+      getConfigArray<string>("supported_aspect_ratios", [
+        "16:9",
+        "4:3",
+        "1:1",
+        "4:5",
+        "9:16",
+        "4:1",
+        "1:4",
+        "8:1",
+        "1:8",
+      ]),
+    ]);
+
+    if (!supportedResolutions.includes(parsed.resolution)) {
+      return NextResponse.json(
+        { success: false, error: `Unsupported resolution: ${parsed.resolution}` },
+        { status: 400 }
+      );
+    }
+    if (!supportedAspectRatios.includes(parsed.aspect_ratio)) {
+      return NextResponse.json(
+        { success: false, error: `Unsupported aspect ratio: ${parsed.aspect_ratio}` },
+        { status: 400 }
+      );
+    }
 
     // Fetch DNA profile
     const { data: dnaProfile } = await supabase

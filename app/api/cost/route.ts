@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { calculateCost } from "@/lib/billing";
+import { getConfigArray } from "@/lib/config";
 import type { Resolution, AspectRatio, ThinkingLevel } from "@/types";
 
 const costSchema = z.object({
-  resolution: z.enum(["0.5K", "1K", "2K", "4K"]).default("1K"),
-  aspect_ratio: z.enum(["16:9", "4:3", "1:1", "4:5", "9:16", "4:1", "1:4", "8:1", "1:8"]).default("1:1"),
+  resolution: z.string().default("1K"),
+  aspect_ratio: z.string().default("1:1"),
   num_images: z.number().int().min(1).max(1000).default(1),
   thinking_level: z.enum(["low", "high"]).default("low"),
 });
@@ -14,6 +15,34 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const parsed = costSchema.parse(body);
+
+    const [supportedResolutions, supportedAspectRatios] = await Promise.all([
+      getConfigArray<string>("supported_resolutions", ["0.5K", "1K", "2K", "4K"]),
+      getConfigArray<string>("supported_aspect_ratios", [
+        "16:9",
+        "4:3",
+        "1:1",
+        "4:5",
+        "9:16",
+        "4:1",
+        "1:4",
+        "8:1",
+        "1:8",
+      ]),
+    ]);
+
+    if (!supportedResolutions.includes(parsed.resolution)) {
+      return NextResponse.json(
+        { success: false, error: `Unsupported resolution: ${parsed.resolution}` },
+        { status: 400 }
+      );
+    }
+    if (!supportedAspectRatios.includes(parsed.aspect_ratio)) {
+      return NextResponse.json(
+        { success: false, error: `Unsupported aspect ratio: ${parsed.aspect_ratio}` },
+        { status: 400 }
+      );
+    }
 
     const estimate = await calculateCost({
       resolution: parsed.resolution as Resolution,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireApprovedUser } from "@/lib/auth";
+import { getConfigArray } from "@/lib/config";
 
 const dnaProfileSchema = z.object({
   name: z.string().min(1).max(200),
@@ -11,8 +12,8 @@ const dnaProfileSchema = z.object({
   product_position: z.enum(["center", "left", "right", "top", "bottom"]).default("center"),
   product_scale: z.number().min(0.1).max(1).default(0.5),
   base_prompt: z.string().optional(),
-  aspect_ratio: z.enum(["16:9", "4:3", "1:1", "4:5", "9:16", "4:1", "1:4", "8:1", "1:8"]).default("1:1"),
-  resolution: z.enum(["0.5K", "1K", "2K", "4K"]).default("1K"),
+  aspect_ratio: z.string().default("1:1"),
+  resolution: z.string().default("1K"),
   is_public: z.boolean().default(false),
 });
 
@@ -41,6 +42,34 @@ export async function POST(request: Request) {
     const user = await requireApprovedUser();
     const body = await request.json();
     const parsed = dnaProfileSchema.parse(body);
+
+    const [supportedResolutions, supportedAspectRatios] = await Promise.all([
+      getConfigArray<string>("supported_resolutions", ["0.5K", "1K", "2K", "4K"]),
+      getConfigArray<string>("supported_aspect_ratios", [
+        "16:9",
+        "4:3",
+        "1:1",
+        "4:5",
+        "9:16",
+        "4:1",
+        "1:4",
+        "8:1",
+        "1:8",
+      ]),
+    ]);
+
+    if (!supportedResolutions.includes(parsed.resolution)) {
+      return NextResponse.json(
+        { success: false, error: `Unsupported resolution: ${parsed.resolution}` },
+        { status: 400 }
+      );
+    }
+    if (!supportedAspectRatios.includes(parsed.aspect_ratio)) {
+      return NextResponse.json(
+        { success: false, error: `Unsupported aspect ratio: ${parsed.aspect_ratio}` },
+        { status: 400 }
+      );
+    }
 
     const supabase = createAdminClient();
     const { data, error } = await supabase

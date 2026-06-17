@@ -58,25 +58,79 @@ export async function enqueueBatch(batchId: string, userId: string, origin?: str
     .update({ status: 'processing', updated_at: new Date().toISOString() })
     .eq('id', batchId);
 
-  // Submit each node to fal.ai with webhook callback
-  const concurrency = await getConfigNumber('max_concurrent_jobs', 4);
-  for (let i = 0; i < nodes.length; i += concurrency) {
-    const chunk = nodes.slice(i, i + concurrency);
-    await Promise.all(
-      chunk.map((node) =>
-        submitGenerationNode({
-          nodeId: node.id,
-          batchId: batch.id,
-          userId,
-          dnaProfileId: batch.dna_profile_id,
-          productImageUrl: node.original_image_url,
-          seed: node.seed_used ?? Math.floor(Math.random() * 1_000_000),
-          cost: node.cost,
-          origin: origin || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://lumina-factory.netlify.app',
-        })
-      )
-    );
+  // Seed the queue with the first N pending nodes; the webhook handler will
+  // keep the pipeline full by submitting the next pending node every time a
+  // job finishes or fails. This avoids serverless timeouts on large batches.
+  await submitNextPendingNodes({
+    batchId,
+    userId,
+    dnaProfileId: batch.dna_profile_id,
+    origin: origin || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://lumina-factory.netlify.app',
+    limit: await getConfigNumber('max_concurrent_jobs', 4),
+  });
+}
+
+export async function submitNextPendingNodes(ctx: {
+  batchId: string;
+  userId: string;
+  dnaProfileId?: string;
+  origin: string;
+  limit?: number;
+}): Promise<void> {
+  const supabase = createAdminClient();
+  const limit = ctx.limit ?? (await getConfigNumber('max_concurrent_jobs', 4));
+
+  const { data: dnaProfile } = await supabase
+    .from('dna_profiles')
+    .select('*')
+    .eq('id', ctx.dnaProfileId || '')
+    .single();
+
+  if (!dnaProfile) return;
+
+  // Keep the concurrency window full: while processing count < limit and a
+  // pending node exists, submit the next one.
+  for (let submitted = 0; submitted < limit; submitted++) {
+    const processingCount = await getProcessingCount(supabase, ctx.batchId);
+    if (processingCount >= limit) break;
+
+    const { data: nextNode } = await supabase
+      .from('image_nodes')
+      .select('*')
+      .eq('batch_id', ctx.batchId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single();
+
+    if (!nextNode) break;
+
+    await submitGenerationNode({
+      nodeId: nextNode.id,
+      batchId: ctx.batchId,
+      userId: ctx.userId,
+      dnaProfileId: dnaProfile.id,
+      productImageUrl: nextNode.original_image_url,
+      seed: nextNode.seed_used ?? Math.floor(Math.random() * 1_000_000),
+      cost: nextNode.cost,
+      origin: ctx.origin,
+    });
   }
+}
+
+async function getProcessingCount(supabase: ReturnType<typeof createAdminClient>, batchId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('image_nodes')
+    .select('*', { count: 'exact', head: true })
+    .eq('batch_id', batchId)
+    .eq('status', 'processing');
+
+  if (error) {
+    console.error('getProcessingCount error:', error);
+    return 0;
+  }
+
+  return count || 0;
 }
 
 export async function submitGenerationNode(ctx: GenerationContext) {

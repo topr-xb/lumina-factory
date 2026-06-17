@@ -71,6 +71,48 @@ export default function BatchDetailPage() {
     fetchBatch();
   };
 
+  const handleDownloadAll = async () => {
+    if (!batch?.nodes) return;
+    const successNodes = batch.nodes.filter((n) => n.status === "success" && n.generated_image_url);
+    if (successNodes.length === 0) {
+      toast.error("لا توجد صور للتحميل", "لا توجد صور ناجحة في هذه الدفعة بعد");
+      return;
+    }
+
+    toast.info("جاري التحضير", `جاري تحميل ${successNodes.length} صورة...`);
+
+    let downloaded = 0;
+    let failed = 0;
+
+    for (let i = 0; i < successNodes.length; i++) {
+      const node = successNodes[i];
+      try {
+        const res = await fetch(node.generated_image_url!, { mode: "cors" });
+        if (!res.ok) throw new Error("Network error");
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${batch.name}-${i + 1}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        downloaded++;
+      } catch {
+        // Fallback: open in new tab if CORS/blob download fails
+        window.open(node.generated_image_url!, "_blank");
+        failed++;
+      }
+    }
+
+    if (failed === 0) {
+      toast.success("تم التحميل", `تم تحميل ${downloaded} صورة`);
+    } else {
+      toast.success("تم التحميل جزئياً", `تم تحميل ${downloaded} صورة، وفتح ${failed} في علامة جديدة`);
+    }
+  };
+
   if (loading) {
     return (
       <PageTransition className="space-y-6" dir="rtl">
@@ -150,7 +192,10 @@ export default function BatchDetailPage() {
               إعادة توليد الفاشلة
             </Button>
           )}
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={handleDownloadAll}
+          >
             <Download className="ml-2 h-4 w-4" />
             تحميل الكل
           </Button>
