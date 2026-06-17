@@ -10,6 +10,7 @@ import { Testimonials } from "@/components/landing/testimonials";
 import { FAQ } from "@/components/landing/faq";
 import { CTASection } from "@/components/landing/cta-section";
 import { Footer } from "@/components/landing/footer";
+import { StaggerContainer, StaggerItem } from "@/components/motion/page-transition";
 
 export default function Home() {
   return (
@@ -17,15 +18,17 @@ export default function Home() {
       <MarketingNav />
       <main className="flex-1">
         <Hero />
-        <LogoCloud />
-        <Features />
-        <HowItWorks />
-        <UseCases />
-        <ShowcaseGallery />
-        <Pricing />
-        <Testimonials />
-        <FAQ />
-        <CTASection />
+        <StaggerContainer stagger={0.08}>
+          <StaggerItem><LogoCloud /></StaggerItem>
+          <StaggerItem><Features /></StaggerItem>
+          <StaggerItem><HowItWorks /></StaggerItem>
+          <StaggerItem><UseCases /></StaggerItem>
+          <StaggerItem><ShowcaseGallery /></StaggerItem>
+          <StaggerItem><Pricing /></StaggerItem>
+          <StaggerItem><Testimonials /></StaggerItem>
+          <StaggerItem><FAQ /></StaggerItem>
+          <StaggerItem><CTASection /></StaggerItem>
+        </StaggerContainer>
       </main>
       <Footer />
     </div>

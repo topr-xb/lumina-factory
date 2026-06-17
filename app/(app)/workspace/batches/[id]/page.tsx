@@ -4,10 +4,16 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/page/page-header";
+import { PageTransition } from "@/components/motion/page-transition";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { LoadingState } from "@/components/ui/loading-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { toast } from "@/lib/toast";
 import type { ProductionBatch, ImageNode } from "@/types";
 import {
   ArrowLeft,
@@ -26,12 +32,22 @@ export default function BatchDetailPage() {
 
   const [batch, setBatch] = useState<(ProductionBatch & { nodes?: ImageNode[] }) | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchBatch = useCallback(async () => {
-    const res = await fetch(`/api/batches/${batchId}`);
-    const json = await res.json();
-    if (json.success) setBatch(json.data);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/batches/${batchId}`);
+      const json = await res.json();
+      if (json.success) {
+        setBatch(json.data);
+      } else {
+        setError(json.error || "تعذر تحميل الدفعة");
+      }
+    } catch {
+      setError("تعذر الاتصال بالخادم");
+    } finally {
+      setLoading(false);
+    }
   }, [batchId]);
 
   useEffect(() => {
@@ -51,32 +67,42 @@ export default function BatchDetailPage() {
       body: JSON.stringify({ node_ids: failedIds }),
     });
 
+    toast.success("تمت إعادة التوليد", "جاري معالجة الصور الفاشلة");
     fetchBatch();
   };
 
   if (loading) {
     return (
-      <div className="space-y-6" dir="rtl">
+      <PageTransition className="space-y-6" dir="rtl">
         <PageHeader title="تفاصيل الدفعة" subtitle="جاري تحميل البيانات..." />
-        <div className="grid gap-4 sm:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-xl bg-white/[0.03]" />
-          ))}
-        </div>
-      </div>
+        <LoadingState text="جاري تحميل تفاصيل الدفعة..." />
+      </PageTransition>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageTransition className="space-y-6" dir="rtl">
+        <PageHeader title="تفاصيل الدفعة" subtitle="تعذر تحميل البيانات" />
+        <ErrorState title="تعذر تحميل الدفعة" description={error} onRetry={fetchBatch} />
+      </PageTransition>
     );
   }
 
   if (!batch) {
     return (
-      <div className="text-center" dir="rtl">
-        <h1 className="text-xl font-bold text-white">الدفعة غير موجودة</h1>
-        <Link href="/workspace">
-          <Button className="mt-4" variant="outline">
-            العودة للدفعات
-          </Button>
-        </Link>
-      </div>
+      <PageTransition className="space-y-6" dir="rtl">
+        <PageHeader title="تفاصيل الدفعة" subtitle="الدفعة غير موجودة" />
+        <EmptyState
+          icon={ImageIcon}
+          title="الدفعة غير موجودة"
+          description="قد تكون الدفعة محذوفة أو الرابط غير صحيح."
+          action={{
+            label: "العودة للدفعات",
+            onClick: () => (window.location.href = "/workspace"),
+          }}
+        />
+      </PageTransition>
     );
   }
 
@@ -95,7 +121,7 @@ export default function BatchDetailPage() {
   const status = statusConfig[batch.status] || statusConfig.pending;
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <PageTransition className="space-y-6" dir="rtl">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
           <Link href="/workspace">
@@ -162,7 +188,7 @@ export default function BatchDetailPage() {
         <StatCard label="الإجمالي" value={batch.total_images} />
         <StatCard label="النجاح" value={batch.successful_images} color="text-emerald-500" />
         <StatCard label="الفشل" value={batch.failed_images} color="text-destructive" />
-        <StatCard label="التكلفة" value={`$${Number(batch.total_cost).toFixed(2)}`} />
+        <StatCard label="التكلفة" value={`${Number(batch.total_cost).toFixed(2)}`} isCurrency />
       </div>
 
       <Separator className="bg-white/[0.06]" />
@@ -204,14 +230,14 @@ export default function BatchDetailPage() {
             ))}
           </div>
         ) : (
-          <Card className="border-white/[0.06] bg-card">
-            <CardContent className="py-12 text-center text-muted-foreground">
-              لا توجد صور بعد. سيتم تحديث الصفحة تلقائياً.
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={ImageIcon}
+            title="لا توجد صور بعد"
+            description="سيتم تحديث الصفحة تلقائياً عند اكتمال التوليد."
+          />
         )}
       </div>
-    </div>
+    </PageTransition>
   );
 }
 
@@ -219,16 +245,21 @@ function StatCard({
   label,
   value,
   color = "text-white",
+  isCurrency,
 }: {
   label: string;
   value: string | number;
   color?: string;
+  isCurrency?: boolean;
 }) {
+  const numeric = typeof value === "number" ? value : Number(value);
+  const display = isCurrency || Number.isNaN(numeric) ? `$${value}` : <AnimatedNumber value={numeric} />;
+
   return (
     <Card className="border-white/[0.06] bg-card">
       <CardContent className="p-5 text-center">
         <p className="text-sm text-muted-foreground">{label}</p>
-        <p className={`mt-1 text-3xl font-bold ${color}`}>{value}</p>
+        <p className={`mt-1 text-3xl font-bold ${color}`}>{display}</p>
       </CardContent>
     </Card>
   );

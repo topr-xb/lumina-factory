@@ -1,5 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { createMetadata } from "@/lib/metadata";
 import { Sparkles } from "lucide-react";
+
+export const metadata: Metadata = createMetadata("حسابك", "تسجيل الدخول أو إنشاء حساب جديد في Lumina Factory");
 
 export default function AuthLayout({
   children,

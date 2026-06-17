@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
 import { motion } from "framer-motion";
 import { Loader2, CheckCircle2 } from "lucide-react";
 
@@ -36,10 +37,12 @@ export default function SignupPage() {
 
     if (error) {
       setError(error.message);
+      toast.error("فشل إنشاء الحساب", error.message);
       setLoading(false);
       return;
     }
 
+    toast.success("تم إنشاء الحساب", "تحقق من بريدك لتأكيد الحساب");
     setSuccess(true);
     setLoading(false);
   };

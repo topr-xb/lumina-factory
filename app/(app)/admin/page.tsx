@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { PageTransition } from "@/components/motion/page-transition";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LoadingState } from "@/components/ui/loading-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { toast } from "@/lib/toast";
 import {
   Users,
   Settings,
@@ -20,6 +25,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [configs, setConfigs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -34,14 +40,26 @@ export default function AdminPage() {
   };
 
   const fetchConfigs = async () => {
-    const res = await fetch("/api/admin/config");
-    const json = await res.json();
-    if (json.success) setConfigs(json.data);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/config");
+      const json = await res.json();
+      if (json.success) setConfigs(json.data);
+      else setError(json.error || "تعذر تحميل الإعدادات");
+    } catch {
+      setError("تعذر الاتصال بالخادم");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const approveUser = async (id: string) => {
-    await fetch(`/api/admin/users/${id}/approve`, { method: "POST" });
+    const res = await fetch(`/api/admin/users/${id}/approve`, { method: "POST" });
+    const json = await res.json();
+    if (json.success) {
+      toast.success("تمت الموافقة", "المستخدم يمكنه الآن استخدام المنصة");
+    } else {
+      toast.error("فشلت الموافقة", json.error || "حاول مرة أخرى");
+    }
     fetchUsers();
   };
 
@@ -64,14 +82,30 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
-      </div>
+      <PageTransition className="space-y-8" dir="rtl">
+        <div>
+          <h1 className="font-heading-ar text-3xl font-bold text-white">لوحة الإدارة</h1>
+          <p className="mt-1 text-muted-foreground">إدارة المستخدمين وإعدادات النظام</p>
+        </div>
+        <LoadingState text="جاري تحميل لوحة الإدارة..." />
+      </PageTransition>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageTransition className="space-y-8" dir="rtl">
+        <div>
+          <h1 className="font-heading-ar text-3xl font-bold text-white">لوحة الإدارة</h1>
+          <p className="mt-1 text-muted-foreground">إدارة المستخدمين وإعدادات النظام</p>
+        </div>
+        <p className="text-destructive">{error}</p>
+      </PageTransition>
     );
   }
 
   return (
-    <div className="space-y-8" dir="rtl">
+    <PageTransition className="space-y-8" dir="rtl">
       {/* Header */}
       <div>
         <h1 className="font-heading-ar text-3xl font-bold text-white">لوحة الإدارة</h1>
@@ -90,7 +124,9 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="font-heading-en text-2xl font-bold text-white">{stat.value}</p>
+                  <p className="font-heading-en text-2xl font-bold text-white">
+                    <AnimatedNumber value={stat.value} />
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -121,7 +157,10 @@ export default function AdminPage() {
             />
           </div>
 
-          <div className="space-y-3">
+          {filteredUsers.length === 0 ? (
+            <EmptyState icon={Search} title="لا توجد نتائج" description="جرّب كلمة بحث مختلفة." />
+          ) : (
+            <div className="space-y-3">
             {filteredUsers.map((user) => (
               <Card
                 key={user.id}
@@ -162,7 +201,8 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             ))}
-          </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="config" className="space-y-4">
@@ -178,7 +218,7 @@ export default function AdminPage() {
           ))}
         </TabsContent>
       </Tabs>
-    </div>
+    </PageTransition>
   );
 }
 
@@ -204,8 +244,9 @@ function ConfigEditor({
         body: JSON.stringify({ config_key: configKey, config_value: parsed }),
       });
       onSave();
+      toast.success("تم حفظ الإعداد", configKey);
     } catch (e) {
-      alert("Invalid JSON");
+      toast.error("JSON غير صالح", "تأكد من صيغة JSON");
     } finally {
       setSaving(false);
     }
