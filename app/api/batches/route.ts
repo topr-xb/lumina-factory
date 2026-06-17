@@ -147,7 +147,8 @@ export async function POST(request: Request) {
 
     // Start queue processing
     if (parsed.auto_start) {
-      await enqueueBatch(batch.id, user.id);
+      const origin = new URL(request.url).origin;
+      await enqueueBatch(batch.id, user.id, origin);
     }
 
     return NextResponse.json({ success: true, data: batch, estimate });

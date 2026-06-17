@@ -1,11 +1,8 @@
 "use client";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const faqs = [
   {
@@ -36,6 +33,8 @@ const faqs = [
 ];
 
 export function FAQ() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
   return (
     <section id="faq" className="py-24 lg:py-32">
       <div className="container mx-auto px-4 lg:px-8">
@@ -45,23 +44,27 @@ export function FAQ() {
           </h2>
         </div>
 
-        <div className="mx-auto mt-16 max-w-3xl">
-          <Accordion type="single" collapsible className="space-y-4">
-            {faqs.map((faq, index) => (
-              <AccordionItem
+        <div className="mx-auto mt-16 max-w-3xl space-y-4">
+          {faqs.map((faq, index) => {
+            const open = openIndex === index;
+            return (
+              <div
                 key={index}
-                value={`item-${index}`}
-                className="rounded-xl border border-white/[0.06] bg-card px-6"
+                className="rounded-xl border border-white/[0.06] bg-card px-6 py-4"
               >
-                <AccordionTrigger className="text-right text-white hover:no-underline">
-                  {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="text-right text-muted-foreground">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+                <button
+                  className="flex w-full items-center justify-between text-right"
+                  onClick={() => setOpenIndex(open ? null : index)}
+                >
+                  <span className="text-white">{faq.question}</span>
+                  <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform", open && "rotate-180")} />
+                </button>
+                {open && (
+                  <p className="mt-3 text-right text-muted-foreground">{faq.answer}</p>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

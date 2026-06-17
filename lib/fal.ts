@@ -51,6 +51,7 @@ export async function validateGenerationPayload(payload: GenerationPayload): Pro
 
 export async function buildGenerationPayload(params: {
   prompt: string;
+  systemPrompt?: string | null;
   decorImageUrl: string;
   productImageUrl: string;
   numImages: number;
@@ -58,6 +59,9 @@ export async function buildGenerationPayload(params: {
   aspectRatio?: AspectRatio;
   seed?: number;
   thinkingLevel?: ThinkingLevel;
+  enableWebSearch?: boolean;
+  outputFormat?: 'jpeg' | 'png' | 'webp';
+  safetyTolerance?: 1 | 2 | 3 | 4 | 5 | 6;
 }): Promise<GenerationPayload> {
   const payload: GenerationPayload = {
     prompt: params.prompt,
@@ -71,6 +75,18 @@ export async function buildGenerationPayload(params: {
   if (params.thinkingLevel === 'high') {
     payload.thinking_level = 'high';
   }
+  if (params.systemPrompt) {
+    payload.system_prompt = params.systemPrompt;
+  }
+  if (params.enableWebSearch) {
+    payload.enable_web_search = true;
+  }
+  if (params.outputFormat) {
+    payload.output_format = params.outputFormat;
+  }
+  if (params.safetyTolerance) {
+    payload.safety_tolerance = String(params.safetyTolerance) as any;
+  }
 
   // Explicitly request limited generations for predictable outputs
   payload.limit_generations = true;
@@ -78,7 +94,7 @@ export async function buildGenerationPayload(params: {
   return payload;
 }
 
-export async function submitGenerationJob(payload: GenerationPayload) {
+export async function submitGenerationJob(payload: GenerationPayload, webhookUrl?: string) {
   initFalClient();
 
   const endpoint = await getConfigString('fal_api_endpoint', 'https://queue.fal.run/fal-ai/nano-banana-2/edit');
@@ -91,6 +107,7 @@ export async function submitGenerationJob(payload: GenerationPayload) {
 
   const result = await fal.queue.submit(targetEndpoint, {
     input: payload as Record<string, unknown>,
+    ...(webhookUrl ? { webhookUrl } : {}),
   });
 
   return result;

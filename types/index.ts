@@ -99,7 +99,11 @@ export interface GenerationPayload {
   resolution?: Resolution;
   aspect_ratio?: AspectRatio;
   seed?: number;
-  thinking_level?: ThinkingLevel;
+  thinking_level?: 'high' | 'minimal';
+  system_prompt?: string;
+  enable_web_search?: boolean;
+  output_format?: 'jpeg' | 'png' | 'webp';
+  safety_tolerance?: string;
   limit_generations?: boolean;
   [key: string]: unknown;
 }

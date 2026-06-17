@@ -29,7 +29,7 @@ const navItems = [
   { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
   { href: "/workspace", label: "فضاء العمل", icon: Briefcase },
   { href: "/dna-profiles/new", label: "هوية بصرية", icon: Dna },
-  { href: "#", label: "معرض الصور", icon: ImageIcon, disabled: true },
+  { href: "/gallery", label: "معرض الصور", icon: ImageIcon },
   { href: "#", label: "المحفظة", icon: Wallet, disabled: true },
 ];
 
@@ -135,8 +135,13 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
             </div>
 
             <Link
-              href="#"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-white"
+              href="/settings"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                pathname === "/settings"
+                  ? "bg-amber-500/10 text-amber-500"
+                  : "text-muted-foreground hover:bg-white/[0.04] hover:text-white"
+              )}
             >
               <Settings className="h-4 w-4" />
               الإعدادات

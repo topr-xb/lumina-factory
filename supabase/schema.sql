@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     email TEXT,
     full_name TEXT,
     role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'accountant')),
-    approval_status TEXT NOT NULL DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected')),
+    approval_status TEXT NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending', 'approved', 'rejected')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -124,12 +124,12 @@ BEGIN
         NEW.email,
         COALESCE(NEW.raw_user_meta_data ->> 'full_name', NEW.raw_user_meta_data ->> 'name', ''),
         'user',
-        'pending'
+        'approved'
     )
     ON CONFLICT (id) DO NOTHING;
 
     INSERT INTO user_wallets (user_id, available_credits)
-    VALUES (NEW.id, 0)
+    VALUES (NEW.id, COALESCE((get_config('free_signup_credits', '0')::text)::NUMERIC, 0))
     ON CONFLICT (user_id) DO NOTHING;
 
     RETURN NEW;
@@ -285,17 +285,17 @@ BEGIN
 
     -- Resolution multiplier
     multiplier := CASE p_resolution
-        WHEN '0.5K' THEN COALESCE((get_config('multiplier_0_5k', '0.6')::text)::NUMERIC, 0.6)
+        WHEN '0.5K' THEN COALESCE((get_config('multiplier_0_5k', '0.75')::text)::NUMERIC, 0.75)
         WHEN '1K'  THEN COALESCE((get_config('multiplier_1k', '1.0')::text)::NUMERIC, 1.0)
-        WHEN '2K'  THEN COALESCE((get_config('multiplier_2k', '1.8')::text)::NUMERIC, 1.8)
-        WHEN '4K'  THEN COALESCE((get_config('multiplier_4k', '3.2')::text)::NUMERIC, 3.2)
+        WHEN '2K'  THEN COALESCE((get_config('multiplier_2k', '1.5')::text)::NUMERIC, 1.5)
+        WHEN '4K'  THEN COALESCE((get_config('multiplier_4k', '2.0')::text)::NUMERIC, 2.0)
         ELSE 1.0
     END;
 
-    -- Thinking level multiplier
+    -- Thinking level add-on
     thinking_multiplier := CASE p_thinking_level
-        WHEN 'high' THEN COALESCE((get_config('multiplier_thinking_high', '1.5')::text)::NUMERIC, 1.5)
-        ELSE 1.0
+        WHEN 'high' THEN COALESCE((get_config('addon_thinking_high', '0.002')::text)::NUMERIC, 0.002)
+        ELSE 0
     END;
 
     total := base_cost * multiplier * thinking_multiplier * GREATEST(p_num_images, 1);
@@ -390,11 +390,13 @@ INSERT INTO system_configs (config_key, config_value) VALUES
 ('fal_api_endpoint', '"https://queue.fal.run/fal-ai/nano-banana-2/edit"'::jsonb),
 ('fal_api_model', '"fal-ai/nano-banana-2/edit"'::jsonb),
 ('base_cost_1k', '0.08'::jsonb),
-('multiplier_0_5k', '0.6'::jsonb),
+('multiplier_0_5k', '0.75'::jsonb),
 ('multiplier_1k', '1.0'::jsonb),
-('multiplier_2k', '1.8'::jsonb),
-('multiplier_4k', '3.2'::jsonb),
-('multiplier_thinking_high', '1.5'::jsonb),
+('multiplier_2k', '1.5'::jsonb),
+('multiplier_4k', '2.0'::jsonb),
+('addon_thinking_high', '0.002'::jsonb),
+('addon_web_search', '0.015'::jsonb),
+('safety_tolerance', '4'::jsonb),
 ('price_per_credit', '0.01'::jsonb),
 ('max_batch_size', '1000'::jsonb),
 ('max_concurrent_jobs', '4'::jsonb),

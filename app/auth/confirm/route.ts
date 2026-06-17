@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
     });
 
     if (!error) {
-      return NextResponse.redirect(new URL(next, request.url));
+      const base = new URL(request.url);
+      return NextResponse.redirect(new URL(next, `${base.protocol}//${base.host}`));
     }
 
     console.error('Email confirmation error:', error.message);

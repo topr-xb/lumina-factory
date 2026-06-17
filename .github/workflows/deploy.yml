@@ -34,7 +34,23 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FAL_KEY: ${{ secrets.FAL_KEY }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          FAL_WEBHOOK_SECRET: ${{ secrets.FAL_WEBHOOK_SECRET }}
+
+      - name: Sync environment variables to Netlify
+        run: |
+          npx netlify-cli env:set NEXT_PUBLIC_SUPABASE_URL '${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}'
+          npx netlify-cli env:set NEXT_PUBLIC_SUPABASE_ANON_KEY '${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}'
+          npx netlify-cli env:set SUPABASE_SERVICE_ROLE_KEY '${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}'
+          npx netlify-cli env:set FAL_KEY '${{ secrets.FAL_KEY }}'
+          npx netlify-cli env:set REDIS_URL '${{ secrets.REDIS_URL }}'
+          npx netlify-cli env:set NEXT_PUBLIC_SITE_URL '${{ secrets.NEXT_PUBLIC_SITE_URL }}'
+          npx netlify-cli env:set NEXT_PUBLIC_APP_URL '${{ secrets.NEXT_PUBLIC_APP_URL }}'
+          npx netlify-cli env:set FAL_WEBHOOK_SECRET '${{ secrets.FAL_WEBHOOK_SECRET }}'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
       - name: Deploy to Netlify (Production)
         if: github.ref == 'refs/heads/main'
